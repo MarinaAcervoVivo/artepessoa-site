@@ -4,10 +4,6 @@ on:
   push:
     branches: [main]
 
-env:
-  # Opt into Node.js 24 to avoid deprecation warnings
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -15,21 +11,23 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Upload to Hostinger via FTP
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
-        with:
-          server: 147.93.64.87
-          username: u636715437.artepessoa.com.br
-          password: ${{ secrets.FTP_PASSWORD }}
-          server-dir: /public_html/
-          local-dir: ./
-          # PASSIVE mode — required for Hostinger (NAT/firewall compatibility)
-          passive: true
-          # Generous timeout for large static export uploads
-          timeout: 60000
-          exclude: |
-            **/.git*
-            **/.git*/**
-            .github/**
-            desktop.ini
-            **/.DS_Store
+      - name: Install lftp
+        run: sudo apt-get install -y lftp
+
+      - name: Upload to Hostinger via lftp
+        env:
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+        run: |
+          lftp -u "u636715437.artepessoa.com.br,$FTP_PASSWORD" ftp://147.93.64.87 <<'EOF'
+          set ftp:passive-mode yes
+          set ssl:verify-certificate no
+          set net:timeout 120
+          set net:max-retries 5
+          set net:reconnect-interval-base 5
+          mirror --reverse --delete --ignore-time --verbose \
+            --exclude=".git/" \
+            --exclude=".github/" \
+            --exclude="desktop.ini" \
+            ./ /public_html/
+          bye
+          EOF
