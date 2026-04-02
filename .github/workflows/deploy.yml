@@ -4,6 +4,10 @@ on:
   push:
     branches: [main]
 
+env:
+  # Opt into Node.js 24 to avoid deprecation warnings
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -19,7 +23,13 @@ jobs:
           password: ${{ secrets.FTP_PASSWORD }}
           server-dir: /public_html/
           local-dir: ./
+          # PASSIVE mode — required for Hostinger (NAT/firewall compatibility)
+          passive: true
+          # Generous timeout for large static export uploads
+          timeout: 60000
           exclude: |
             **/.git*
             **/.git*/**
             .github/**
+            desktop.ini
+            **/.DS_Store
